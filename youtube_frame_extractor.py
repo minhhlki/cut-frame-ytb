@@ -15,6 +15,7 @@ import sys
 import os
 import re
 from pathlib import Path
+import argparse
 
 
 def check_dependencies():
@@ -78,12 +79,13 @@ def format_timestamp_for_filename(timestamp: str) -> str:
     return timestamp.strip().replace(':', '-')
 
 
-def get_video_stream_url(youtube_url: str) -> str:
+def get_video_stream_url(youtube_url: str, cookies_file: str = None) -> str:
     """
     Lấy direct stream URL của video YouTube.
     
     Args:
         youtube_url: URL của video YouTube
+        cookies_file: Đường dẫn đến file cookies (tùy chọn)
     
     Returns:
         Direct stream URL
@@ -91,8 +93,17 @@ def get_video_stream_url(youtube_url: str) -> str:
     print(f"🔍 Đang lấy thông tin video từ YouTube...")
     
     try:
+        cmd = ['yt-dlp', '-f', 'best[ext=mp4]/best', '-g']
+        
+        # Thêm cookies nếu có
+        if cookies_file and os.path.exists(cookies_file):
+            cmd.extend(['--cookies', cookies_file])
+            print(f"🍪 Sử dụng cookies từ: {cookies_file}")
+        
+        cmd.append(youtube_url)
+        
         result = subprocess.run(
-            ['yt-dlp', '-f', 'best[ext=mp4]/best', '-g', youtube_url],
+            cmd,
             capture_output=True,
             text=True,
             check=True
@@ -160,6 +171,11 @@ def validate_youtube_url(url: str) -> bool:
 
 def main():
     """Hàm chính của chương trình."""
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Trích xuất khung hình từ video YouTube')
+    parser.add_argument('--cookies', type=str, help='Đường dẫn đến file cookies')
+    args = parser.parse_args()
+    
     print("=" * 60)
     print("       YOUTUBE FRAME EXTRACTOR")
     print("       Trích xuất khung hình từ video YouTube")
@@ -215,8 +231,8 @@ def main():
     output_dir = Path("output")
     output_dir.mkdir(exist_ok=True)
     
-    # Lấy stream URL
-    stream_url = get_video_stream_url(youtube_url)
+    # Lấy stream URL (với cookies nếu có)
+    stream_url = get_video_stream_url(youtube_url, args.cookies)
     print()
     
     # Trích xuất các frame
