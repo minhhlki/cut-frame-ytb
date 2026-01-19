@@ -169,13 +169,37 @@ def validate_youtube_url(url: str) -> bool:
     return any(re.match(pattern, url) for pattern in youtube_patterns)
 
 
+def create_cookie_file(cookie_content: str) -> str:
+    """
+    Tạo file cookies từ nội dung nhập vào.
+    
+    Args:
+        cookie_content: Nội dung cookies dạng Netscape
+    
+    Returns:
+        Đường dẫn file cookies đã tạo
+    """
+    cookie_file = "cookies.txt"
+    
+    try:
+        # Kiểm tra xem có header chưa
+        if not cookie_content.strip().startswith("# Netscape HTTP Cookie File"):
+            # Thêm header nếu chưa có
+            cookie_content = "# Netscape HTTP Cookie File\n# This is a generated file! Do not edit.\n\n" + cookie_content
+        
+        with open(cookie_file, 'w') as f:
+            f.write(cookie_content)
+        
+        print(f"✅ Đã tạo file cookies: {cookie_file}")
+        return cookie_file
+        
+    except Exception as e:
+        print(f"❌ Lỗi khi tạo file cookies: {e}")
+        return None
+
+
 def main():
     """Hàm chính của chương trình."""
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description='Trích xuất khung hình từ video YouTube')
-    parser.add_argument('--cookies', type=str, help='Đường dẫn đến file cookies')
-    args = parser.parse_args()
-    
     print("=" * 60)
     print("       YOUTUBE FRAME EXTRACTOR")
     print("       Trích xuất khung hình từ video YouTube")
@@ -185,6 +209,32 @@ def main():
     # Kiểm tra dependencies
     check_dependencies()
     print()
+    
+    # Hỏi có muốn dùng cookies không
+    use_cookies = input("🍪 Bạn có muốn sử dụng cookies? (y/n): ").strip().lower()
+    cookies_file = None
+    
+    if use_cookies == 'y':
+        print()
+        print("📝 Nhập nội dung cookies (format Netscape)")
+        print("   Mỗi dòng: domain<TAB>flag<TAB>path<TAB>secure<TAB>expiration<TAB>name<TAB>value")
+        print("   Ví dụ: .youtube.com<TAB>TRUE<TAB>/<TAB>TRUE<TAB>0<TAB>APISID<TAB>value123")
+        print("   Nhập 'DONE' ở dòng mới khi hoàn tất")
+        print()
+        
+        cookie_lines = []
+        while True:
+            line = input()
+            if line.strip().upper() == 'DONE':
+                break
+            cookie_lines.append(line)
+        
+        if cookie_lines:
+            cookie_content = '\n'.join(cookie_lines)
+            cookies_file = create_cookie_file(cookie_content)
+            if not cookies_file:
+                print("⚠️  Tiếp tục mà không có cookies...")
+        print()
     
     # Nhập link YouTube
     while True:
@@ -232,7 +282,7 @@ def main():
     output_dir.mkdir(exist_ok=True)
     
     # Lấy stream URL (với cookies nếu có)
-    stream_url = get_video_stream_url(youtube_url, args.cookies)
+    stream_url = get_video_stream_url(youtube_url, cookies_file)
     print()
     
     # Trích xuất các frame
